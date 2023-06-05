@@ -13,9 +13,12 @@ using namespace ControlTableItem;         //This namespace is required to use Co
 // ********************************************************************************************************************************************************************************************
 
 uint8_t DXL_ID = 1;                   // The ID of the Dynamixel
-extern bool Fault;                    // A conditional fault variable, used to store the status of a fault condition
-long Requested_Position;              // The requested position of the Dynaixel, to be sent to the Goal Position
-//extern byte Error;                // Contains the Error Bits. There are 8 possible error bits, so 1 byte is enough to store it.
+bool    Fault;                        // A conditional fault variable, used to store the status of a fault condition
+long    Raw_Position;                 // Holds the Dynamixel's Position without any offset
+long    DXL_Offset;                   // Holds the Dynamixel's Calculated Offset
+long    Last_Pos = 0;                 // The last known position of the Dynamixel as a short because the position can be either negative or positive.
+long    Current_Saved_Position;
+// byte Error;                // Contains the Error Bits. There are 8 possible error bits, so 1 byte is enough to store it.
 
 // ********************************************************************************************************************************************************************************************
 // Pin Assignments

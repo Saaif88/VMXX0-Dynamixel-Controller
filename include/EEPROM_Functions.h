@@ -18,9 +18,9 @@ void Fault_Condition()
 void Save_Position() // Does what it says, saves the present position of the Dynamixel to the MRAM
   {
     long       Current_Position;             // Contains the Dynamixel's current position
-    byte       Current_Position_Bytes[4];    // Contains the Dynamixel's current position as a collection of bytes
+    char       Current_Position_Bytes[5];    // Contains the Dynamixel's current position as a collection of bytes
     long       Calculated_Stored_Pos;        // The stored position, created from the 4 saved bytes in the MRAM  
-    byte       Stored_Pos[4];                // The stored position as individual bytes
+    char       Stored_Pos[5];                // The stored position as individual bytes
     long       Pos_Difference;               // The difference between the stored position and the actual position
     bool       Pos_Changed;                  // A True/False that holds whether the position has changed or not
 
@@ -31,7 +31,7 @@ void Save_Position() // Does what it says, saves the present position of the Dyn
     Stored_Pos[3] = fram.read8(0x3);
 
     Calculated_Stored_Pos = (Stored_Pos[0] << 24) | (Stored_Pos[1] << 16) | (Stored_Pos[2] << 8 ) | (Stored_Pos[3]); // This is how to combine 4 bytes into a 32-Bit Number
-    
+    Last_Pos = Calculated_Stored_Pos; // They are the same thing, just useful for debugging
     Current_Position = (dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the current position of the Dynamixel, and store it temporarily
 
     Pos_Difference = Calculated_Stored_Pos - Current_Position; // The position difference is just the stored position minus the present position
@@ -82,7 +82,7 @@ void Save_Position() // Does what it says, saves the present position of the Dyn
       // PC_SERIAL.println(F("Dynamixel Current Position Saved to MRAM \n"));
     }
 
-    else if (Pos_Changed == false) // If the positon has not changed, then there is no reason to save it. This avoid wearing out the MRAM (Even if it is infinite...)
+    else if (Pos_Changed == false) // If the positon has not changed, then there is no reason to save it. This avoids wearing out the MRAM (Even if it is infinite...)
     {
       // PC_SERIAL.println(F("MRAM Matches Current Position for Dynamixel, No Change \n"));
     }  
@@ -101,7 +101,7 @@ long Load_Position()
   long       MT_Offset;                    // Stores the multi turn offset of the Dynamixel
   float      Stored_Turn;                  // Stores the current turn number with decimals
   long       Abs_Stored_Turn;              // Stores the current turn number without decimals, rounded down
-  byte       Stored_Pos[4];                // An array of 4 bytes that contains the Dynamixel's last known position
+  char       Stored_Pos[5];                // An array of 4 bytes that contains the Dynamixel's last known position
   long       Calculated_Stored_Pos;        // The Dynamixel's last position created from the stored bytes
 
   // Reads the 4 saved bytes and puts them each into an array
@@ -117,9 +117,9 @@ long Load_Position()
   
   MT_Offset = (Abs_Stored_Turn * 4096); // Multiply the saved turn by 4096 to get the Multi Turn offset value
   
-   PC_SERIAL.println((String)"The Current Stored Position of the Dynamixel is " + Calculated_Stored_Pos);
-   PC_SERIAL.println((String)"The Current Stored Turn of the Dynamixel is " + Abs_Stored_Turn);
-   PC_SERIAL.println((String)"The new multi turn offset of the Dynamixel is " + MT_Offset);
+   //PC_SERIAL.println((String)"The Current Stored Position of the Dynamixel is " + Calculated_Stored_Pos);
+   //PC_SERIAL.println((String)"The Current Stored Turn of the Dynamixel is " + Abs_Stored_Turn);
+   //PC_SERIAL.println((String)"The new multi turn offset of the Dynamixel is " + MT_Offset);
 
   return MT_Offset; // Return the new calculated number
 }
@@ -131,7 +131,7 @@ long Load_Position()
 void Correct_Position()
 {
   
-  bool         Ping1;                       // Used the hold the status of the 1st Dynamixel (Either present or not)
+  bool         Ping1;                       // Used the hold the status of the Dynamixel (Either present or not)
   byte         Stored_Pos_highbyte;         // Contains the Dynamixel's last position highbyte that is stored in the EEPROM
   byte         Stored_Pos_lowbyte;          // Contains the Dynamixel's last position lowbyte that is stored in the EEPROM
   word         Stored_Pos_word;             // Contains the Dynamixel's last position that is stored in the MRAM (Combination of the lowbyte and highbyte)
@@ -145,15 +145,14 @@ void Correct_Position()
   byte         Neg_Corrected_Count = 0;     // the stored number of negative corrections the system has made
 
   Ping1 = (dxl.ping(DXL_ID)); // Ping the Dynamixel to see if it is alive/connected
-  delay(5);
 
   Stored_Pos_highbyte = fram.read8(0x0); // Read the stored highbyte of the last known position from the fram
   Stored_Pos_lowbyte = fram.read8(0x1); // Read the stored lowbyte of the last known position from the fram
   Stored_Pos_word = word(Stored_Pos_highbyte, Stored_Pos_lowbyte); // Combine the highbyte and lowbyte into the actual position
   Stored_Pos = (short) Stored_Pos_word; // Cast the word to a short, since the position can be either negative or positive
 
-  Pos_Corrected_Count = fram.read8(0x2); // Read the stored number of positive corrections the system has made
-  Neg_Corrected_Count = fram.read8(0x3); // Read the stored number of negative corrections the system has made
+  Pos_Corrected_Count = fram.read8(0x4); // Read the stored number of positive corrections the system has made
+  Neg_Corrected_Count = fram.read8(0x5); // Read the stored number of negative corrections the system has made
   
   Present_Position = (dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the present position of the Dynamixel
   // PC_SERIAL.println(); // Just a blank line for readability
@@ -161,7 +160,6 @@ void Correct_Position()
   // PC_SERIAL.println(Stored_Pos);
   // PC_SERIAL.print(F("Dynamixel Current Position is "));
   // PC_SERIAL.println(Present_Position);
-  delay(5);
 
   Position_Difference = Present_Position - Stored_Pos; // Calculate the difference between the stored and present position
   abs_Position_Difference = abs(Position_Difference); // Get rid of any negative numbers

@@ -2,13 +2,12 @@
 // This handles the outgoing data to the PC serial port
 // ********************************************************************************************************************************************************************************************
 
-void Serial_Respond() // Responds to the PC with all of the various pieces of data. This can be changed, but this is what all the LabView software uses so far
+void Serial_Respond() // Responds to the PC with all of the various pieces of data.
 {
   long    Present_Position = 0;         // Contains the Dynamixel's present position
   char    Present_Position_Bytes[5];    // Contains the Dynamixel's present position as an array of 4 Bytes
   long    Goal_Position = 0;            // Contains the Dynamixel's Goal position
-  char    Goal_Position_Bytes[5];       // Contains the Dynamixel's Goal position as an array of 4 Bytes
-  char    Requested_Position_Bytes[5];  // The requested positon of the Dynamixel, sent from the PC as an array of 4 Bytes   
+  char    Goal_Position_Bytes[5];       // Contains the Dynamixel's Goal position as an array of 4 Bytes 
   byte    Moving;                       // Holds the status of the Dynamixel, either moving or not
   byte    Error;                        // Contains any errors producted by the Dynamixel
 
@@ -25,10 +24,6 @@ void Serial_Respond() // Responds to the PC with all of the various pieces of da
   Goal_Position_Bytes[1] = Goal_Position >> 8;
   Goal_Position_Bytes[2] = Goal_Position >> 16;
   Goal_Position_Bytes[3] = Goal_Position >> 24;
-  Requested_Position_Bytes[0] = Requested_Position;
-  Requested_Position_Bytes[1] = Requested_Position >> 8;
-  Requested_Position_Bytes[2] = Requested_Position >> 16;
-  Requested_Position_Bytes[3] = Requested_Position >> 24;
   Moving = (dxl.readControlTableItem(MOVING, DXL_ID)); // Check to see if the Dynamixel is moving
   Error = (dxl.getLastLibErrCode()); // Check what errors have been reported
   
@@ -42,10 +37,6 @@ void Serial_Respond() // Responds to the PC with all of the various pieces of da
    PC_SERIAL.write(Present_Position_Bytes[2]); // 
    PC_SERIAL.write(Present_Position_Bytes[1]); // 
    PC_SERIAL.write(Present_Position_Bytes[0]); //
-   PC_SERIAL.write(Requested_Position_Bytes[3]); // 
-   PC_SERIAL.write(Requested_Position_Bytes[2]); // 
-   PC_SERIAL.write(Requested_Position_Bytes[1]); // 
-   PC_SERIAL.write(Requested_Position_Bytes[0]); //
    PC_SERIAL.write(Moving); // Send the moving status
    PC_SERIAL.write(Error); // Send the error byte
    //PC_SERIAL.write(lowByte(~(lowByte(Goal_Position) + highByte(Goal_Position) + lowByte(Present_Position) + highByte(Present_Position) + Moving + Error))); // Send the checksum
@@ -60,18 +51,9 @@ void Serial_Parse(int Bytes)
 {
   char        PC_Rx_Sentence[9] = "$000000#";  // Initialize received serial sentence (PC, 8 bytes)
   // Why 9? Because C expects an extra "null byte" when it comes to char arrays apparently. I could have just left this blank, but this seems important to remember.
-  //long        Desired_Position = 0;           // The desired position of the Dynamixel, either valid or invalid
+  long        Desired_Position = 0;           // The desired position of the Dynamixel, either valid or invalid
   long        Goal_Position = 0;              // The goal position value of the Dynamixel
   long        Valid_Position = 0;             // The desired position after it has been constrained within the limits, making it a valid position to move to
-  //long        Low_Limit = -1044479;           // The lowest allowable position (Min -1,044,479 for MX28/MX64, -2,147,483,648 for DXL Pro)
-  //long        High_Limit = 1044479;           // The highest allowable position (Max 1,044,479 for MX28/MX64,  2,147,483,648 for DXL Pro)
-  
-  long        DXL_Stored_Offset = 0;            // Holds the Dynamixel's Stored Offset (In MRAM)
-  long        Original_Offset = 0;              // Holds the Original Offset
-  long        New_Offset = 0;                   // Holds the New Offset
-  long        Last_Pos = 0;
-  long        Abs_Present_Turn = 0;
-  
   
   // Parse received serial
   for (int x=0; x < Bytes; x++) //Put each byte received into an array
@@ -82,11 +64,11 @@ void Serial_Parse(int Bytes)
   // If the command starts with the $ sign, ends with the # sign, and the checksum matches (Same checksum style as Dynamixel) do this:
   if (PC_Rx_Sentence[0] == '$' && PC_Rx_Sentence[Bytes - 1] == '#' && PC_Rx_Sentence[5] == lowByte(~(PC_Rx_Sentence[1] + PC_Rx_Sentence[2] + PC_Rx_Sentence[3] + PC_Rx_Sentence[4])) && PC_Rx_Sentence[6] == '%')
     {    
-        Requested_Position = (PC_Rx_Sentence[1] << 24) | (PC_Rx_Sentence[2] << 16) | ( PC_Rx_Sentence[3] << 8 ) | (PC_Rx_Sentence[4]);
-        // This is how you make a 32-Bit number with four bytes, two high bytes and two low bytes.
-          Valid_Position = Requested_Position;
+        Desired_Position = (PC_Rx_Sentence[1] << 24) | (PC_Rx_Sentence[2] << 16) | ( PC_Rx_Sentence[3] << 8 ) | (PC_Rx_Sentence[4]); // This is how you make a 32-Bit number with four bytes, two high bytes and two low bytes.
 
-        //Valid_Position = constrain(Desired_Position, Low_Limit, High_Limit); // Put the desired position into the valid position after it has been constrained if necessary
+        #ifdef Dynamixel_MX
+          Valid_Position = constrain(Desired_Position, -1044479, 1044479); // Put the desired position into the valid position after it has been constrained
+        #endif
         Goal_Position = (dxl.readControlTableItem(GOAL_POSITION, DXL_ID)); // Read the current goal position from the Dynamixel
 
         if (Valid_Position == Goal_Position) // If the valid position is the same as the goal position, don't write anything, as nothing has changed.
@@ -97,7 +79,6 @@ void Serial_Parse(int Bytes)
         else if (Valid_Position != Goal_Position) // If the valid position is not the same as the goal position:
         {
           dxl.setGoalPosition(DXL_ID, Valid_Position); // Set the new goal position
-          //dxl.setGoalPosition(DXL_ID, Requested_Position); // Set the new goal position 
           Serial_Respond(); // Respond to PC
         }
      }
@@ -109,40 +90,40 @@ void Serial_Parse(int Bytes)
       PC_SERIAL.print(F("VM200G")); // This is to let the PC know that it has found the right device 
   }
   
-  // If the arduino receives the specific command $DEBUG# then respond with this:
-  // This is essentially a debug command
+  // If the arduino receives the specific command $DEBUG!# then respond with this:
   else if (PC_Rx_Sentence[0] == '$' && PC_Rx_Sentence[Bytes - 1] == '#' && PC_Rx_Sentence[1] == 'D' && PC_Rx_Sentence[2] == 'E' && PC_Rx_Sentence[3] == 'B' && PC_Rx_Sentence[4] == 'U' && PC_Rx_Sentence[5] == 'G' && PC_Rx_Sentence[6] == '!')
   {
-     PC_SERIAL.println(); // Just a blank line for readability
-     PC_SERIAL.print(F("Current Dynamixel ID is "));
-     PC_SERIAL.println(dxl.readControlTableItem(ID, DXL_ID)); // Read the values
-     PC_SERIAL.print(F("Dynamixel Speed is set to "));
-     PC_SERIAL.println(dxl.readControlTableItem(MOVING_SPEED, DXL_ID)); // Read the values
-     PC_SERIAL.print(F("Dynamixel Torque is set to "));
-     PC_SERIAL.println(dxl.readControlTableItem(MAX_TORQUE, DXL_ID)); // Read the values
-     PC_SERIAL.print(F("Dynamixel P Gain is set to "));
-     PC_SERIAL.println(dxl.readControlTableItem(P_GAIN, DXL_ID)); // Read the values
-     PC_SERIAL.print(F("Last Known Position "));
-     PC_SERIAL.println(Last_Pos);
-     PC_SERIAL.print(F("Present Position "));
-     PC_SERIAL.println(dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the values
-     PC_SERIAL.print(F("Original Offset was: "));
-     PC_SERIAL.println(Original_Offset);
-     PC_SERIAL.print(F("New Offset after setting is: "));
-     PC_SERIAL.println(New_Offset);
-     PC_SERIAL.print(F("Dynamixel Current Offset set to "));
-     PC_SERIAL.println(dxl.readControlTableItem(MULTI_TURN_OFFSET, DXL_ID)); // Read the values
-     PC_SERIAL.print(F("Dynamixel Stored Offset "));
-     PC_SERIAL.println(DXL_Stored_Offset);
-     PC_SERIAL.print(F("Current Saved Turn is "));
-     PC_SERIAL.println(Abs_Present_Turn);
-     //PC_SERIAL.print(F("System has corrected itself in the positive direction "));
-     //PC_SERIAL.print(fram.read8(0x2));
-     //PC_SERIAL.println(F(" times"));
-     //PC_SERIAL.print(F("System has corrected itself in the negative direction "));
-     //PC_SERIAL.print(fram.read8(0x3));
-     //PC_SERIAL.println(F(" times"));
-     PC_SERIAL.print(F("Current controller firmware is version 2.2 "));
+    char       Stored_Pos[5];          // An array of 4 bytes that contains the Dynamixel's last known position
+    Stored_Pos[0] = fram.read8(0x0);
+    Stored_Pos[1] = fram.read8(0x1);
+    Stored_Pos[2] = fram.read8(0x2);
+    Stored_Pos[3] = fram.read8(0x3);
+
+    long Calculated_Stored_Pos = (Stored_Pos[0] << 24) | (Stored_Pos[1] << 16) | (Stored_Pos[2] << 8 ) | (Stored_Pos[3]); // This is how to combine 4 bytes into a 32-Bit Number
+  
+    float Stored_Turn = Calculated_Stored_Pos / 4096.00; // Divide the stored position by 4096 to get the turn number. Decimals need to be added for float math.
+    long Abs_Stored_Turn = floor(Stored_Turn); // Gets rid of the decimals on the turn number by rounding down, and store as Abs_Present_Turn
+
+    PC_SERIAL.println(); // Just a blank line for readability
+    PC_SERIAL.print(F("Current Dynamixel ID is "));
+    PC_SERIAL.println(dxl.readControlTableItem(ID, DXL_ID)); // Read the values
+    PC_SERIAL.print(F("Dynamixel speed is set to "));
+    PC_SERIAL.println(dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID)); // Read the values
+    PC_SERIAL.print(F("Dynamixel position P Gain is set to "));
+    PC_SERIAL.println(dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID)); // Read the values
+    PC_SERIAL.print(F("Last known position was "));
+    PC_SERIAL.println(Last_Pos);
+    PC_SERIAL.print(F("Saved position is "));
+    PC_SERIAL.println(Calculated_Stored_Pos);
+    PC_SERIAL.print(F("Present position is "));
+    PC_SERIAL.println(dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the values
+    PC_SERIAL.print(F("Raw Dynamixel Position with no offset was "));
+    PC_SERIAL.println(Raw_Position);
+    PC_SERIAL.print(F("Dynamixel current offset is set to "));
+    PC_SERIAL.println(dxl.readControlTableItem(HOMING_OFFSET, DXL_ID)); // Read the values
+    PC_SERIAL.print(F("Current saved Turn is "));
+    PC_SERIAL.println(Abs_Stored_Turn);
+    PC_SERIAL.print(F("Current controller firmware is version 2.4 - Built June 5th 2023"));
   }
   
   else if (PC_Rx_Sentence[0] == '$' && PC_Rx_Sentence[Bytes - 1] == '#' && PC_Rx_Sentence[1] == '1' && PC_Rx_Sentence[2] == '2' && PC_Rx_Sentence[3] == '3' && PC_Rx_Sentence[4] == '4')

@@ -1,10 +1,10 @@
 // This is designed to be used with a Arduino Micro or a TEENSY 3.2/LC
 // This is also designed to be used with an Everspin MR25H256 MRAM Module
 // CHANGELOG: Modified Dynamixel library with new protocol.c file to fix -131073 Bug
-// CHANGELOG: Pretty much everything else is disabled right now, but I will try it again in the future with multi turn stuff
-// CHANGELOG: 
-// CHANGELOG: 
-// TODO: Implement 
+// CHANGELOG: Updated FRAM Library and modified it. Shouldn't make any difference
+// CHANGELOG: Added #IFDEF Statements to switch easily between DXL Pro and MX Series
+// CHANGELOG: Re-enabled all of the disabled stuff except for Correct Position
+// TODO: 
 
 /*
    What is this code? This program is used to communicate to a Dynamixel Servo Motor. This servo motor has it's own proprietary communication protocol, so in order for the Arduino to communicate with it, the Dynamixel2Arduino library is used.
@@ -20,17 +20,17 @@
    the Arduino reads the last known position from the MRAM, and applies the correct offset to the Dynamixel with some simple calculations. This allows the motor to keep track of it's position over a wide range of turns, both in the negative and positive directions.
 */
 
+// Choose which kind of Dynamixel this program is going to be used for. Makes a HUGE difference in a number of different ways.
+#define Dynamixel_MX // Dynamixel MX28, MX64, enables multi turn, position saving, position correction
+//#define Dynamixel_Pro // Dynamixel PM42-010-260-R, disables multi turn, position saving, position correction
+
 // ********************************************************************************************************************************************************************************************
 // Dependancies required for this code to function
 // ********************************************************************************************************************************************************************************************
 
-#include "setup.h" // I use this to declare global variables, include libraries, define pins, 
+#include "setup.h"            // I use this to declare global variables, include libraries, define pins, 
 #include "Serial_Functions.h" // All of the functions dealing with communications between the MCU, PC and Dynamixel
-//#include "EEPROM_Functions.h" // All of the functions that relate to the memory chip
-// None of these functions are actually required for this version of the code.
-
-#define Dynamixel MX
-//#define Dynamixel Pro
+#include "EEPROM_Functions.h" // All of the functions that relate to the memory chip
 
 // ********************************************************************************************************************************************************************************************
 // Variables
@@ -38,24 +38,17 @@
 
 int           PC_numBytes = 0;              // Number of bytes that are ACTUALLY at the serial port (PC)
 int           PC_Expected_Bytes = 8;        // Number of bytes that SHOULD be at the serial port (PC)
-long          DXL_Offset;                   // Holds the Dynamixel's Calculated Offset
-float         Abs_Present_Turn;             // Contains the Dynamixel's current Turn without decimals
-byte          Last_Pos_highbyte = 0;        // The highbyte of the last known Dynamixel position
-byte          Last_Pos_lowbyte = 0;         // The lowbyte of the last known Dynamixel position
-word          Last_Pos_word = 0;            // The last known position of the Dynamixel (Combination of the lowbyte and highbyte) 
-long          Last_Pos = 0;                 // The last known position of the Dynamixel as a short because the position can be either negative or positive.
 
-unsigned long    previousMillis = 0;        // will store last millis value
-const long       interval = 500;            // interval at which to run function (milliseconds)
+unsigned long    previousMillis = 0;        // This will store last millis value
+const long       interval = 100;            // interval at which to run functions (milliseconds)
 // These are used to time things without having to resort to delay which pauses the program
-// This has been reduced in this version of the software. It seems to work fine so far.
 
 void setup() {
 
-  dxl.begin(57600); // Initialize communications with the Dynamixel at 57600 baud
+  dxl.begin(57600);                // Initialize communications with the Dynamixel at 57600 baud, which is the default
   dxl.setPortProtocolVersion(2.0); // Set Port Protocol Version. This has to match with the DYNAMIXEL protocol version.
-  PC_SERIAL.begin(115200); // Initialize communications with the PC at 115200 baud
-  while(!PC_SERIAL) delay(10); // Only start sending data 10ms after the serial port is open
+  PC_SERIAL.begin(115200);         // Initialize communications with the PC at 115200 baud
+  while(!PC_SERIAL) delay(10);     // Only start sending data 10ms after the serial port is open
 
   //PC_SERIAL.println("Serial Communications Established");
 
@@ -77,57 +70,71 @@ void setup() {
   // Check current Dynamixel operating mode and change if necessary
   // Mode 3 = OP_POSITION = Position Control Mode (One full rotation = -263,187 to 263,187) (Actually -262,931 to 262,931) for DXL Pro or 0-4096 for DXL MX
   // Mode 4 = OP_EXTENDED_POSITION = Extended Position Control Mode (Multi Turn Mode from -2,147,483,648 to 2,147,483,647 (DXL Pro) or -1,048,575 to 1,048,575 (DXL MX))
+  
+  #ifdef Dynamixel_MX
   while (dxl.readControlTableItem(OPERATING_MODE, DXL_ID) != 4)
   {
     dxl.setOperatingMode(DXL_ID, OP_EXTENDED_POSITION);
-    PC_SERIAL.print(F("Operating Mode setting verified OK"));
+    PC_SERIAL.print(F("Operating Mode changed"));
   };
+  #endif
+
+  #ifdef Dynamixel_Pro
+  while (dxl.readControlTableItem(OPERATING_MODE, DXL_ID) != 3)
+  {
+    dxl.setOperatingMode(DXL_ID, OP_POSITION);
+    PC_SERIAL.print(F("Operating Mode changed"));
+  };
+  #endif
   
   // Set Dynamixel Speed Limit (From 0 to 2600 for Dynamixel Pro, 0-1023 for MX Series)
+  #ifdef Dynamixel_MX
   while (dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID) != 1023)
   {
     dxl.writeControlTableItem(VELOCITY_LIMIT, DXL_ID, 1023);
-    PC_SERIAL.println(F("Speed setting verified OK"));
+    PC_SERIAL.println(F("Speed setting changed"));
   };
+  #endif
 
-  // Set Dynamixel Torque (Not sure how to do this in 2.0)
-  //dxl.writeControlTableItem(MAX_TORQUE, DXL_ID, 1023);
-  //PC_SERIAL.print((String)"Dynamixel Torque set to " + dxl.readControlTableItem(MAX_TORQUE, DXL_ID) + "\n");
+  #ifdef Dynamixel_Pro
+   while (dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID) != 2600)
+  {
+    dxl.writeControlTableItem(VELOCITY_LIMIT, DXL_ID, 2600);
+    PC_SERIAL.println(F("Speed setting changed"));
+  };
+  #endif
 
-   // Set the Positon P Gain (0 - 16,383)
+  // Set the Positon P Gain (0 - 16,383)
   //while (dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID) != 502)
   //{
   //  dxl.writeControlTableItem(POSITION_P_GAIN, DXL_ID, 502);
   //  PC_SERIAL.println(F("P Gain setting verified OK"));
   //};
 
-  // These settings are only required in Multi Turn Mode
-  /*
+  // These settings are only required in Multi Turn Mode for the MX Series
+  #ifdef Dynamixel_MX
   // Reset the Multi Turn Offset. Protocol 2.0 calls this "Homing Offset" instead of "Multi Turn Offset"
   while (dxl.readControlTableItem(HOMING_OFFSET, DXL_ID) != 0)
   {
     dxl.writeControlTableItem(HOMING_OFFSET, DXL_ID, 0);
-    PC_SERIAL.println(F("Homing Offset reset to 0"));
+    //PC_SERIAL.println(F("Homing Offset reset to 0"));
   };
 
   // Check to see where the Dynamixel is before any adjustments. Useful for debugging.
-  //long Present_Position = (dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the current position of the Dynamixel
-  //PC_SERIAL.print((String)"Current Dynamixel Position before adjustment is " + Present_Position + "\n");
-
+  Raw_Position = (dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the current position of the Dynamixel
+ 
   DXL_Offset = Load_Position(); // Run the Load_Position function to calculate the Dynamixel Offset
-  long Constrained_DXL_Offset = DXL_Offset; // No need to constrain for Dynamixel Pro
-  //long Constrained_DXL_Offset = constrain(DXL_Offset, -1044479, 1044479); // This is specific to the MX28 & MX64. They can only receive positions between -1,044,479 and 1,044,479
+  long Constrained_DXL_Offset = constrain(DXL_Offset, -1044479, 1044479); // This is specific to the MX28 & MX64. They can only receive positions between -1,044,479 and 1,044,479
 
   // Write the stored Multi Turn Offset back to the Dynamixel. This is the new Multi Turn Offset
   // Protocol 2.0 calls this "Homing Offset" instead of "Multi Turn Offset"
    while (dxl.readControlTableItem(HOMING_OFFSET, DXL_ID) != Constrained_DXL_Offset)
   {
     dxl.writeControlTableItem(HOMING_OFFSET, DXL_ID, Constrained_DXL_Offset);
-    PC_SERIAL.print((String)"New offset after setting is " + dxl.readControlTableItem(HOMING_OFFSET, DXL_ID) + "\n");;
+    //PC_SERIAL.print((String)"New offset after setting is " + dxl.readControlTableItem(HOMING_OFFSET, DXL_ID) + "\n");;
   };
-
   //Correct_Position(); // Run the Correct_Position function. This is used to handle the supposedly rare rollover bug.
-  */
+  #endif
 
   //PC_SERIAL.println(F("Initial settings complete."));
 
@@ -136,23 +143,25 @@ void setup() {
 
 void loop() {
 
-  // The first part of this program is a timer loop. Instead of a delay that interrupts the program, this allows multiple things to happen in parallel.
+  // This is a timer loop. Instead of a delay() that interrupts the program, this allows multiple things to happen in "parallel".
   unsigned long currentMillis = millis(); // Get the current time in ms that the program has been running
 
   if (currentMillis - previousMillis >= interval) // This will check to see what the current time of the program is. If a certain time has passed, reset the timer, and run the Save_Position function
   {
     previousMillis = currentMillis; // Reset the loop timer
-    //Save_Position(); // Runs the save position function. This constantly compares the turn saved in the MRAM to the actual turn that the Dynamixels are on.
+    #ifdef Dynamixel_MX
+    Save_Position(); // Runs the save position function. This constantly compares the turn saved in the MRAM to the actual turn that the Dynamixels are on.
+    #endif
   }
 
   PC_numBytes = PC_SERIAL.available(); // Check to see how many bytes are waiting at the serial port.
 
   if (PC_numBytes >= 1) // If there is something at the serial port:
   {
-    // Peek to see if first character is the dollar sign. If not, flush the buffer because it's not important. The $ character is what I use to send valid commands.
+    // Peek to see if first character is the dollar sign. If not, flush the RX buffer because it's not important. The $ character is what I use to send valid commands.
     if (PC_SERIAL.peek() != '$')
     {
-      while (PC_SERIAL.available() > 0) PC_SERIAL.read(); // Flush serial Rx buffer by reading the data
+      while (PC_SERIAL.available() > 0) PC_SERIAL.read(); // Flush serial RX buffer by reading the data
     }
   }
 
