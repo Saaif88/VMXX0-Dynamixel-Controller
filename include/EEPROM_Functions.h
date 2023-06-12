@@ -60,10 +60,10 @@ void Save_Position() // Does what it says, saves the present position of the Dyn
   else if (Pos_Changed == true && dxl.ping(DXL_ID) == true) // If the stored position of the Dynamixel is NOT the same as the current position and the Dynamixel is connected
     { 
        Current_Position = (dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the current position of the Dynamixel, and store it as bytes      
-       Current_Position_Bytes[0] = Current_Position >> 24;
-       Current_Position_Bytes[1] = Current_Position >> 16;
-       Current_Position_Bytes[2] = Current_Position >> 8;
-       Current_Position_Bytes[3] = Current_Position;
+       Current_Position_Bytes[0] = (Current_Position >> 24) & 0xFF;
+       Current_Position_Bytes[1] = (Current_Position >> 16) & 0xFF;
+       Current_Position_Bytes[2] = (Current_Position >> 8) & 0xFF;
+       Current_Position_Bytes[3] = Current_Position & 0xFF;
 
 
       fram.writeEnable(true); // Enable writing 

@@ -14,16 +14,16 @@ void Serial_Respond() // Responds to the PC with all of the various pieces of da
   // Get Dynamixel positions
   Present_Position = (dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the present position
   // Convert the 32-Bit number to an array of 4 Bytes
-  Present_Position_Bytes[0] = Present_Position;
-  Present_Position_Bytes[1] = Present_Position >> 8;
-  Present_Position_Bytes[2] = Present_Position >> 16;
-  Present_Position_Bytes[3] = Present_Position >> 24;
+  Present_Position_Bytes[0] = Present_Position & 0xFF;
+  Present_Position_Bytes[1] = (Present_Position >> 8) & 0xFF;
+  Present_Position_Bytes[2] = (Present_Position >> 16) & 0xFF;
+  Present_Position_Bytes[3] = (Present_Position >> 24) & 0xFF;
   Goal_Position = (dxl.readControlTableItem(GOAL_POSITION, DXL_ID)); // Read the goal position
   // Convert the 32-Bit number to an array of 4 Bytes
-  Goal_Position_Bytes[0] = Goal_Position;
-  Goal_Position_Bytes[1] = Goal_Position >> 8;
-  Goal_Position_Bytes[2] = Goal_Position >> 16;
-  Goal_Position_Bytes[3] = Goal_Position >> 24;
+  Goal_Position_Bytes[0] = Goal_Position & 0xFF;
+  Goal_Position_Bytes[1] = (Goal_Position >> 8) & 0xFF;
+  Goal_Position_Bytes[2] = (Goal_Position >> 16) & 0xFF;
+  Goal_Position_Bytes[3] = (Goal_Position >> 24) & 0xFF;
   Moving = (dxl.readControlTableItem(MOVING, DXL_ID)); // Check to see if the Dynamixel is moving
   Error = (dxl.getLastLibErrCode()); // Check what errors have been reported
   
@@ -66,9 +66,7 @@ void Serial_Parse(int Bytes)
     {    
         Desired_Position = (PC_Rx_Sentence[1] << 24) | (PC_Rx_Sentence[2] << 16) | ( PC_Rx_Sentence[3] << 8 ) | (PC_Rx_Sentence[4]); // This is how you make a 32-Bit number with four bytes, two high bytes and two low bytes.
 
-        #ifdef Dynamixel_MX
-          Valid_Position = constrain(Desired_Position, -1044479, 1044479); // Put the desired position into the valid position after it has been constrained
-        #endif
+        Valid_Position = constrain(Desired_Position, -1044479, 1044479); // Put the desired position into the valid position after it has been constrained
         Goal_Position = (dxl.readControlTableItem(GOAL_POSITION, DXL_ID)); // Read the current goal position from the Dynamixel
 
         if (Valid_Position == Goal_Position) // If the valid position is the same as the goal position, don't write anything, as nothing has changed.
