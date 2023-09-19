@@ -129,7 +129,7 @@ void Serial_Parse(int Bytes)
     PC_SERIAL.println(dxl.readControlTableItem(HOMING_OFFSET, DXL_ID)); // Read the values
     PC_SERIAL.print(F("Current saved Turn is "));
     PC_SERIAL.println(Abs_Stored_Turn);
-    PC_SERIAL.print(F("Current controller firmware is version 2.4 - Built June 6th 2023"));
+    PC_SERIAL.print(F("Current controller firmware is version 2.4 - Built Sept 19th 2023"));
   }
   
   else if (PC_Rx_Sentence[0] == '$' && PC_Rx_Sentence[Bytes - 1] == '#' && PC_Rx_Sentence[1] == '1' && PC_Rx_Sentence[2] == '2' && PC_Rx_Sentence[3] == '3' && PC_Rx_Sentence[4] == '4')
