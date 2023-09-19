@@ -21,8 +21,8 @@
 */
 
 // Choose which kind of Dynamixel this program is going to be used for. Makes a HUGE difference in a number of different ways.
-#define Dynamixel_MX // Dynamixel MX28, MX64, enables multi turn, position saving, position correction
-//#define Dynamixel_Pro // Dynamixel PM42-010-260-R, disables multi turn, position saving, position correction
+//#define Dynamixel_MX // Dynamixel MX28, MX64, enables multi turn, position saving, position correction
+#define Dynamixel_Pro // Dynamixel PM42-010-260-R, disables multi turn, position saving, position correction
 
 // ********************************************************************************************************************************************************************************************
 // Dependancies required for this code to function
@@ -104,12 +104,12 @@ void setup() {
   };
   #endif
 
-  // Set the Positon P Gain (0 - 16,383)
-  //while (dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID) != 502)
-  //{
-  //  dxl.writeControlTableItem(POSITION_P_GAIN, DXL_ID, 502);
-  //  PC_SERIAL.println(F("P Gain setting verified OK"));
-  //};
+  // Set the Positon P Gain (0 - 16,383) Default for MX64 is 850
+  while (dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID) != 850)
+  {
+    dxl.writeControlTableItem(POSITION_P_GAIN, DXL_ID, 850);
+    //PC_SERIAL.println(F("P Gain setting Changed"));
+  };
 
   // These settings are only required in Multi Turn Mode for the MX Series
   #ifdef Dynamixel_MX

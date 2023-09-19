@@ -66,8 +66,16 @@ void Serial_Parse(int Bytes)
     {    
         Desired_Position = (PC_Rx_Sentence[1] << 24) | (PC_Rx_Sentence[2] << 16) | ( PC_Rx_Sentence[3] << 8 ) | (PC_Rx_Sentence[4]); // This is how you make a 32-Bit number with four bytes, two high bytes and two low bytes.
 
-        Valid_Position = constrain(Desired_Position, -1044479, 1044479); // Put the desired position into the valid position after it has been constrained
+        #ifdef Dynamixel_MX
+        Valid_Position = constrain(Desired_Position, -19500, 13000); // Put the desired position into the valid position after it has been constrained (For VM200)
+        //Valid_Position = constrain(Desired_Position, -1044479, 1044479); // Put the desired position into the valid position after it has been constrained (For general use)
         Goal_Position = (dxl.readControlTableItem(GOAL_POSITION, DXL_ID)); // Read the current goal position from the Dynamixel
+        #endif
+
+        #ifdef Dynamixel_Pro
+        Valid_Position = Desired_Position; // No need to constrain for DXL Pro
+        Goal_Position = (dxl.readControlTableItem(GOAL_POSITION, DXL_ID)); // Read the current goal position from the Dynamixel
+        #endif
 
         if (Valid_Position == Goal_Position) // If the valid position is the same as the goal position, don't write anything, as nothing has changed.
         {
@@ -76,7 +84,7 @@ void Serial_Parse(int Bytes)
 
         else if (Valid_Position != Goal_Position) // If the valid position is not the same as the goal position:
         {
-          dxl.setGoalPosition(DXL_ID, Valid_Position); // Set the new goal position
+          dxl.setGoalPosition(DXL_ID, Desired_Position); // Set the new goal position
           Serial_Respond(); // Respond to PC
         }
      }
@@ -121,7 +129,7 @@ void Serial_Parse(int Bytes)
     PC_SERIAL.println(dxl.readControlTableItem(HOMING_OFFSET, DXL_ID)); // Read the values
     PC_SERIAL.print(F("Current saved Turn is "));
     PC_SERIAL.println(Abs_Stored_Turn);
-    PC_SERIAL.print(F("Current controller firmware is version 2.4 - Built June 5th 2023"));
+    PC_SERIAL.print(F("Current controller firmware is version 2.4 - Built June 6th 2023"));
   }
   
   else if (PC_Rx_Sentence[0] == '$' && PC_Rx_Sentence[Bytes - 1] == '#' && PC_Rx_Sentence[1] == '1' && PC_Rx_Sentence[2] == '2' && PC_Rx_Sentence[3] == '3' && PC_Rx_Sentence[4] == '4')
