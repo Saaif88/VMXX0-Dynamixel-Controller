@@ -4,6 +4,7 @@
 // CHANGELOG: Updated FRAM Library and modified it. Shouldn't make any difference
 // CHANGELOG: Added #IFDEF Statements to switch easily between DXL Pro and MX Series
 // CHANGELOG: Re-enabled all of the disabled stuff except for Correct Position
+// Version Info : 2.4
 // TODO: 
 
 /*
@@ -65,6 +66,13 @@ void setup() {
   // Set Dynamixel defaults
   // ********************************************************************************************************************************************************************************************
 
+  if (dxl.ping(DXL_ID) == false) // If the Dynamixel is not connected, report it and run the Fault_Condition function.
+  {
+      PC_SERIAL.println(F("Ping error detected in Setup Function"));
+      Fault = true; // Set the fault status to true
+      Fault_Condition(); // Run the fault condition function
+  }
+
   dxl.torqueOff(DXL_ID); // Turn the Torque Off. Prerequisite for changing EEPROM data.
 
   // Check current Dynamixel operating mode and change if necessary
@@ -104,28 +112,40 @@ void setup() {
   };
   #endif
 
+  #ifdef Dynamixel_MX
   // Set the Positon P Gain (0 - 16,383) Default for MX64 is 850
   while (dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID) != 850)
   {
     dxl.writeControlTableItem(POSITION_P_GAIN, DXL_ID, 850);
     //PC_SERIAL.println(F("P Gain setting Changed"));
   };
+  #endif
+  #ifdef Dynamixel_Pro
+  // Set the Positon P Gain (0 - 32,767) Default for DXL Pro is 1061
+  while (dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID) != 1061)
+  {
+    dxl.writeControlTableItem(POSITION_P_GAIN, DXL_ID, 1061);
+    //PC_SERIAL.println(F("P Gain setting Changed"));
+  };
+  #endif
 
-  // These settings are only required in Multi Turn Mode for the MX Series
-  #ifdef Dynamixel_MX
-  // Reset the Multi Turn Offset. Protocol 2.0 calls this "Homing Offset"
+
+  // Reset the Multi Turn Offset. Protocol 2.0 calls this "Homing Offset", sometimes this gets stuck
   while (dxl.readControlTableItem(HOMING_OFFSET, DXL_ID) != 0)
   {
     dxl.writeControlTableItem(HOMING_OFFSET, DXL_ID, 0);
     //PC_SERIAL.println(F("Homing Offset reset to 0"));
   };
 
+  // These settings are only required in Multi Turn Mode for the MX Series
+  #ifdef Dynamixel_MX
+
+
   // Check to see where the Dynamixel is before any adjustments. Useful for debugging.
   Raw_Position = (dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the current position of the Dynamixel
  
   DXL_Offset = Load_Position(); // Run the Load_Position function to calculate the Dynamixel Offset
   long Constrained_DXL_Offset = constrain(DXL_Offset, -1044479, 1044479); // MX28 and MX64 can only receive positions between -1,044,479 and 1,044,479 for protocol 2.0
-
 
   // Write the stored Multi Turn Offset back to the Dynamixel. This is the new Multi Turn Offset
   // Protocol 2.0 calls this "Homing Offset" instead of "Multi Turn Offset"

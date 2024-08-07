@@ -25,7 +25,8 @@ void Serial_Respond() // Responds to the PC with all of the various pieces of da
   Goal_Position_Bytes[2] = (Goal_Position >> 16) & 0xFF;
   Goal_Position_Bytes[3] = (Goal_Position >> 24) & 0xFF;
   Moving = (dxl.readControlTableItem(MOVING, DXL_ID)); // Check to see if the Dynamixel is moving
-  Error = (dxl.getLastLibErrCode()); // Check what errors have been reported
+  Error = dxl.readControlTableItem(HARDWARE_ERROR_STATUS, DXL_ID); // Read the Hardware Error Status
+  //Error = (dxl.getLastLibErrCode()); // Check what errors have been reported
   
   // Response
    PC_SERIAL.write('$'); // This is the starting character so that the PC knows where to start reading
@@ -129,7 +130,17 @@ void Serial_Parse(int Bytes)
     PC_SERIAL.println(dxl.readControlTableItem(HOMING_OFFSET, DXL_ID)); // Read the values
     PC_SERIAL.print(F("Current saved Turn is "));
     PC_SERIAL.println(Abs_Stored_Turn);
-    PC_SERIAL.print(F("Current controller firmware is version 2.4 - Built Sept 19th 2023"));
+    PC_SERIAL.print(F("Last Reported Error was "));
+    PC_SERIAL.println((dxl.getLastLibErrCode()));
+    PC_SERIAL.print(F("Current Hardware Error is "));
+    PC_SERIAL.println(dxl.readControlTableItem(HARDWARE_ERROR_STATUS, DXL_ID)); // Read the values
+    PC_SERIAL.println(F("Current controller firmware is version 2.4 - Built June 13th 2024"));
+    #ifdef Dynamixel_MX
+    PC_SERIAL.print(F("Current firmware is for Dynamixel MX"));  
+    #endif
+    #ifdef Dynamixel_Pro
+    PC_SERIAL.print(F("Current firmware is for Dynamixel Pro"));  
+    #endif
   }
   
   else if (PC_Rx_Sentence[0] == '$' && PC_Rx_Sentence[Bytes - 1] == '#' && PC_Rx_Sentence[1] == '1' && PC_Rx_Sentence[2] == '2' && PC_Rx_Sentence[3] == '3' && PC_Rx_Sentence[4] == '4')
