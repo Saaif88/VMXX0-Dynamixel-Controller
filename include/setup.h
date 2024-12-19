@@ -36,3 +36,18 @@ uint8_t       FRAM_CS = SS;    // This is the chip select pin on the MRAM, in th
 // These lines above have been moved to platformio.ini. They're here so I don't forget where they are.
 Dynamixel2Arduino dxl(DXL_SERIAL, DXL_DIR_PIN); // Setup the Dynamixel Serial Port
 Adafruit_FRAM_SPI fram = Adafruit_FRAM_SPI(FRAM_CS); // Sets up the MRAM communications, uses hardware SPI
+
+
+// ********************************************************************************************************************************************************************************************
+// This puts the system into a fault condition where it will not do anything at all until the system is power cycled.
+// ********************************************************************************************************************************************************************************************
+void Fault_Condition()
+{
+  while(Fault == true)
+  {
+     PC_SERIAL.println(); // Just a blank line for readability
+     PC_SERIAL.println((String)"ERROR! Could not find a Dynamixel with ID " + DXL_ID);
+     PC_SERIAL.print(F("Please turn everything off and check your connections!"));
+     delay(500);
+  }
+}

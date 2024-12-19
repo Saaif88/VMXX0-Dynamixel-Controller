@@ -1,18 +1,4 @@
 // ********************************************************************************************************************************************************************************************
-// This puts the system into a fault condition where it will not do anything at all until the system is power cycled.
-// ********************************************************************************************************************************************************************************************
-void Fault_Condition()
-{
-  while(Fault == true)
-  {
-     PC_SERIAL.println(); // Just a blank line for readability
-     PC_SERIAL.println((String)"ERROR! Could not find a Dynamixel with ID " + DXL_ID);
-     PC_SERIAL.print(F("Please turn everything off and check your connections!"));
-     delay(500);
-  }
-}
-
-// ********************************************************************************************************************************************************************************************
 // This puts the present Dynamixel's Turn into the Arduino's EEPROM for Storage
 // ********************************************************************************************************************************************************************************************
 void Save_Position() // Does what it says, saves the present position of the Dynamixel to the MRAM

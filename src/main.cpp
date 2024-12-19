@@ -22,7 +22,12 @@
    the Arduino reads the last known position from the MRAM, and applies the correct offset to the Dynamixel with some simple calculations. This allows the motor to keep track of it's position over a wide range of turns, both in the negative and positive directions.
 */
 
+// ********************************************************************************************************************************************************************************************
+// Dymamixel Selection
+// ********************************************************************************************************************************************************************************************
+
 // Choose which kind of Dynamixel this program is going to be used for. Makes a HUGE difference in a number of different ways.
+
 //#define Dynamixel_MX // Dynamixel MX28, MX64, enables multi turn, position saving, position correction
 #define Dynamixel_Pro // Dynamixel PM42-010-260-R, disables multi turn, position saving, position correction
 //define Dynamixel_Y // Dynamixel YM070-210-R099-RH, has nothing called multi turn, saves using built in battery, has a lot more counts
