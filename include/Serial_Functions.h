@@ -11,6 +11,13 @@ void Serial_Respond() // Responds to the PC with all of the various pieces of da
   byte    Moving;                       // Holds the status of the Dynamixel, either moving or not
   byte    Error;                        // Contains any errors producted by the Dynamixel
 
+  if (dxl.ping(DXL_ID) == false) // If the Dynamixel is not connected, report it and run the Fault_Condition function.
+  {
+    PC_SERIAL.println(F("Ping error detected in Serial_Respond Function"));
+    Fault = true; // Set the fault status to true
+    Fault_Condition(); // Run the fault condition function
+  }
+
   // Get Dynamixel positions
   Present_Position = (dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the present position
   // Convert the 32-Bit number to an array of 4 Bytes
@@ -26,7 +33,7 @@ void Serial_Respond() // Responds to the PC with all of the various pieces of da
   Goal_Position_Bytes[3] = (Goal_Position >> 24) & 0xFF;
   Moving = (dxl.readControlTableItem(MOVING, DXL_ID)); // Check to see if the Dynamixel is moving
   Error = dxl.readControlTableItem(HARDWARE_ERROR_STATUS, DXL_ID); // Read the Hardware Error Status
-  //Error = (dxl.getLastLibErrCode()); // Check what errors have been reported
+  //Error = (dxl.getLastLibErrCode()); // Check what software errors have been reported
   
   // Response
    PC_SERIAL.write('$'); // This is the starting character so that the PC knows where to start reading
@@ -62,6 +69,13 @@ void Serial_Parse(int Bytes)
     PC_Rx_Sentence[x] = PC_SERIAL.read();
   }
 
+  if (dxl.ping(DXL_ID) == false) // If the Dynamixel is not connected, report it and run the Fault_Condition function.
+  {
+    PC_SERIAL.println(F("Ping error detected in Serial_Parse Function"));
+    Fault = true; // Set the fault status to true
+    Fault_Condition(); // Run the fault condition function
+  }
+
   // If the command starts with the $ sign, ends with the # sign, and the checksum matches (Same checksum style as Dynamixel) do this:
   if (PC_Rx_Sentence[0] == '$' && PC_Rx_Sentence[Bytes - 1] == '#' && PC_Rx_Sentence[5] == lowByte(~(PC_Rx_Sentence[1] + PC_Rx_Sentence[2] + PC_Rx_Sentence[3] + PC_Rx_Sentence[4])) && PC_Rx_Sentence[6] == '%')
     {    
@@ -75,6 +89,11 @@ void Serial_Parse(int Bytes)
 
         #ifdef Dynamixel_Pro
         Valid_Position = Desired_Position; // No need to constrain for DXL Pro
+        Goal_Position = (dxl.readControlTableItem(GOAL_POSITION, DXL_ID)); // Read the current goal position from the Dynamixel
+        #endif
+
+        #ifdef Dynamixel_Y
+        Valid_Position = Desired_Position; // No need to constrain for DXL Y
         Goal_Position = (dxl.readControlTableItem(GOAL_POSITION, DXL_ID)); // Read the current goal position from the Dynamixel
         #endif
 
@@ -114,8 +133,18 @@ void Serial_Parse(int Bytes)
     PC_SERIAL.println(); // Just a blank line for readability
     PC_SERIAL.print(F("Current Dynamixel ID is "));
     PC_SERIAL.println(dxl.readControlTableItem(ID, DXL_ID)); // Read the values
+    #ifdef Dynamixel_MX
     PC_SERIAL.print(F("Dynamixel speed is set to "));
-    PC_SERIAL.println(dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID)); // Read the values
+    PC_SERIAL.println(dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID)); // Read the values  
+    #endif
+    #ifdef Dynamixel_Pro
+    PC_SERIAL.print(F("Dynamixel speed is set to "));
+    PC_SERIAL.println(dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID)); // Read the values 
+    #endif
+    #ifdef Dynamixel_Y
+    PC_SERIAL.print(F("Dynamixel speed is set to "));
+    PC_SERIAL.println(dxl.readControlTableItem(GOAL_VELOCITY, DXL_ID)); // Read the values  
+    #endif
     PC_SERIAL.print(F("Dynamixel position P Gain is set to "));
     PC_SERIAL.println(dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID)); // Read the values
     PC_SERIAL.print(F("Last known position was "));
@@ -134,12 +163,15 @@ void Serial_Parse(int Bytes)
     PC_SERIAL.println((dxl.getLastLibErrCode()));
     PC_SERIAL.print(F("Current Hardware Error is "));
     PC_SERIAL.println(dxl.readControlTableItem(HARDWARE_ERROR_STATUS, DXL_ID)); // Read the values
-    PC_SERIAL.println(F("Current controller firmware is version 2.4 - Built June 13th 2024"));
+    PC_SERIAL.println(F("Current controller firmware is version 2.6 - Built Dec 19th 2024"));
     #ifdef Dynamixel_MX
     PC_SERIAL.print(F("Current firmware is for Dynamixel MX"));  
     #endif
     #ifdef Dynamixel_Pro
     PC_SERIAL.print(F("Current firmware is for Dynamixel Pro"));  
+    #endif
+    #ifdef Dynamixel_Y
+    PC_SERIAL.print(F("Current firmware is for Dynamixel Y"));  
     #endif
   }
   

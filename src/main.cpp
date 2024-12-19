@@ -1,11 +1,12 @@
 // This is designed to be used with a Arduino Micro or a TEENSY 3.2/LC
 // This is also designed to be used with an Everspin MR25H256 MRAM Module
-// CHANGELOG: Modified Dynamixel library with new protocol.c file to fix -131073 Bug
-// CHANGELOG: Updated FRAM Library and modified it. Shouldn't make any difference
-// CHANGELOG: Added #IFDEF Statements to switch easily between DXL Pro and MX Series
-// CHANGELOG: Re-enabled all of the disabled stuff except for Correct Position
-// Version Info : 2.4
-// TODO: 
+// CHANGELOG: Modified Dynamixel library with new protocol.c file to fix -131073 Bug** Not sure this change is still relevant
+// CHANGELOG: Using new Dynamixel Library from Jonathon which supports Dynamixel Y
+// CHANGELOG: Added new #IFDEF Statements to switch easily between DXL Y, DXL Pro and MX Series
+// CHANGELOG: Adding Support for Dynamixel Y
+// Fixes: Added ping checks in all main functions
+// Version Info : 2.6
+// TODO: Replace Teensy 3.2 with Teensy 4.0
 
 /*
    What is this code? This program is used to communicate to a Dynamixel Servo Motor. This servo motor has it's own proprietary communication protocol, so in order for the Arduino to communicate with it, the Dynamixel2Arduino library is used.
@@ -24,6 +25,7 @@
 // Choose which kind of Dynamixel this program is going to be used for. Makes a HUGE difference in a number of different ways.
 //#define Dynamixel_MX // Dynamixel MX28, MX64, enables multi turn, position saving, position correction
 #define Dynamixel_Pro // Dynamixel PM42-010-260-R, disables multi turn, position saving, position correction
+//define Dynamixel_Y // Dynamixel YM070-210-R099-RH, has nothing called multi turn, saves using built in battery, has a lot more counts
 
 // ********************************************************************************************************************************************************************************************
 // Dependancies required for this code to function
@@ -68,15 +70,18 @@ void setup() {
 
   if (dxl.ping(DXL_ID) == false) // If the Dynamixel is not connected, report it and run the Fault_Condition function.
   {
-      PC_SERIAL.println(F("Ping error detected in Setup Function"));
-      Fault = true; // Set the fault status to true
-      Fault_Condition(); // Run the fault condition function
+    PC_SERIAL.println(F("Ping error detected in Setup Function"));
+    Fault = true; // Set the fault status to true
+    Fault_Condition(); // Run the fault condition function
   }
 
   dxl.torqueOff(DXL_ID); // Turn the Torque Off. Prerequisite for changing EEPROM data.
 
   // Check current Dynamixel operating mode and change if necessary
-  // Mode 3 = OP_POSITION = Position Control Mode (One full rotation = -263,187 to 263,187) (Actually -262,931 to 262,931) for DXL Pro or 0-4096 for DXL MX
+  // Mode 3 = OP_POSITION = Position Control Mode - One full rotation =
+  // -263,187 to 263,187) (Actually -262,931 to 262,931) for DXL Pro
+  // -25,952,256 to 25,952,256 for DXL Y
+  // 0-4096 for DXL MX
   // Mode 4 = OP_EXTENDED_POSITION = Extended Position Control Mode (Multi Turn Mode from -2,147,483,648 to 2,147,483,647 (DXL Pro) or -1,048,575 to 1,048,575 (DXL MX))
   
   #ifdef Dynamixel_MX
@@ -94,8 +99,16 @@ void setup() {
     PC_SERIAL.print(F("Operating Mode changed"));
   };
   #endif
+
+  #ifdef Dynamixel_Y
+  while (dxl.readControlTableItem(OPERATING_MODE, DXL_ID) != 3)
+  {
+    dxl.setOperatingMode(DXL_ID, OP_POSITION);
+    PC_SERIAL.print(F("Operating Mode changed"));
+  };
+  #endif
   
-  // Set Dynamixel Speed Limit (From 0 to 2600 for Dynamixel Pro, 0-1023 for MX Series)
+  // Set Dynamixel Speed Limit (From 0 to 2600 for Dynamixel Pro, 0-1023 for MX Series, -200000 to 20000 for DXL Y Apparently)
   #ifdef Dynamixel_MX
   while (dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID) != 1023)
   {
@@ -112,19 +125,35 @@ void setup() {
   };
   #endif
 
+  #ifdef Dynamixel_Y
+   while (dxl.readControlTableItem(GOAL_VELOCITY, DXL_ID) != 200000)
+  {
+    dxl.writeControlTableItem(GOAL_VELOCITY, DXL_ID, 200000);
+    PC_SERIAL.println(F("Speed setting changed"));
+  };
+  #endif
+
+  // Set the Positon P Gain (0 - 16,383) Default for MX64 is 850, Default for DXL Pro is 1061, Default for DXL Y is 6283185
   #ifdef Dynamixel_MX
-  // Set the Positon P Gain (0 - 16,383) Default for MX64 is 850
   while (dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID) != 850)
   {
     dxl.writeControlTableItem(POSITION_P_GAIN, DXL_ID, 850);
     //PC_SERIAL.println(F("P Gain setting Changed"));
   };
   #endif
+
   #ifdef Dynamixel_Pro
-  // Set the Positon P Gain (0 - 32,767) Default for DXL Pro is 1061
   while (dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID) != 1061)
   {
     dxl.writeControlTableItem(POSITION_P_GAIN, DXL_ID, 1061);
+    //PC_SERIAL.println(F("P Gain setting Changed"));
+  };
+  #endif
+
+  #ifdef Dynamixel_Y
+  while (dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID) != 6283185)
+  {
+    dxl.writeControlTableItem(POSITION_P_GAIN, DXL_ID, 6283185);
     //PC_SERIAL.println(F("P Gain setting Changed"));
   };
   #endif
@@ -139,8 +168,6 @@ void setup() {
 
   // These settings are only required in Multi Turn Mode for the MX Series
   #ifdef Dynamixel_MX
-
-
   // Check to see where the Dynamixel is before any adjustments. Useful for debugging.
   Raw_Position = (dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the current position of the Dynamixel
  

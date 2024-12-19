@@ -4,7 +4,7 @@
 #include "Adafruit_FRAM_SPI.h"            // Adafruit FRAM library, contains all of the functions for the FRAM. Needs to be modified to work with the MRAM. Currently using 2.4.0
 #include "SPI.h"                          // SPI library, necessary to communicate with the MRAM
 #include "wire.h"                         // Required for the FRAM library
-#include "Dynamixel2Arduino.h"            // Official Dynamixel control library for Arduino. Needs protocol.c replaced. Currently using 0.6.3
+#include "Dynamixel2Arduino.h"            // Official Dynamixel control library for Arduino. Needs protocol.c replaced, mayve. Currently using build from Jonathon
 
 using namespace ControlTableItem;         //This namespace is required to use Control table item names. Required for the Dynamixel Library.
 
