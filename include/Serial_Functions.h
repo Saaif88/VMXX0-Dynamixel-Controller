@@ -163,7 +163,7 @@ void Serial_Parse(int Bytes)
     PC_SERIAL.println((dxl.getLastLibErrCode()));
     PC_SERIAL.print(F("Current Hardware Error is "));
     PC_SERIAL.println(dxl.readControlTableItem(HARDWARE_ERROR_STATUS, DXL_ID)); // Read the values
-    PC_SERIAL.println(F("Current controller firmware is version 2.6 - Built Dec 19th 2024"));
+    PC_SERIAL.println(F("Current controller firmware is version 2.7 - Built Feb 3rd 2025"));
     #ifdef Dynamixel_MX
     PC_SERIAL.print(F("Current firmware is for Dynamixel MX"));  
     #endif

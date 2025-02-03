@@ -1,12 +1,10 @@
-// This is designed to be used with a Arduino Micro or a TEENSY 3.2/LC
+// This is designed to be used with a Arduino Micro or a TEENSY 4.0
 // This is also designed to be used with an Everspin MR25H256 MRAM Module
-// CHANGELOG: Modified Dynamixel library with new protocol.c file to fix -131073 Bug** Not sure this change is still relevant
-// CHANGELOG: Using new Dynamixel Library from Jonathon which supports Dynamixel Y
+// CHANGELOG: Adding Support for Dynamixel Y using new Dynamixel2Arduino 0.8.0
 // CHANGELOG: Added new #IFDEF Statements to switch easily between DXL Y, DXL Pro and MX Series
-// CHANGELOG: Adding Support for Dynamixel Y
+// CHANGELOG: Changed to use Teensy 4.0 instad of 3.2/LC
 // Fixes: Added ping checks in all main functions
-// Version Info : 2.6
-// TODO: Replace Teensy 3.2 with Teensy 4.0
+// Version Info : 2.7
 
 /*
    What is this code? This program is used to communicate to a Dynamixel Servo Motor. This servo motor has it's own proprietary communication protocol, so in order for the Arduino to communicate with it, the Dynamixel2Arduino library is used.
@@ -29,8 +27,8 @@
 // Choose which kind of Dynamixel this program is going to be used for. Makes a HUGE difference in a number of different ways.
 
 //#define Dynamixel_MX // Dynamixel MX28, MX64, enables multi turn, position saving, position correction
-#define Dynamixel_Pro // Dynamixel PM42-010-260-R, disables multi turn, position saving, position correction
-//define Dynamixel_Y // Dynamixel YM070-210-R099-RH, has nothing called multi turn, saves using built in battery, has a lot more counts
+//#define Dynamixel_Pro // Dynamixel PM42-010-260-R, disables multi turn, position saving, position correction
+#define Dynamixel_Y // Dynamixel YM070-210-R099-RH, has nothing called multi turn, saves using built in battery, has a lot more counts
 
 // ********************************************************************************************************************************************************************************************
 // Dependancies required for this code to function
