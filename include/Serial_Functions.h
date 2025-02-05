@@ -130,39 +130,40 @@ void Serial_Parse(int Bytes)
     float Stored_Turn = Calculated_Stored_Pos / 4096.00; // Divide the stored position by 4096 to get the turn number. Decimals need to be added for float math.
     long Abs_Stored_Turn = floor(Stored_Turn); // Gets rid of the decimals on the turn number by rounding down, and store as Abs_Present_Turn
 
-    PC_SERIAL.println(); // Just a blank line for readability
+    //PC_SERIAL.println(); // Just a blank line for readability
     PC_SERIAL.print(F("Current Dynamixel ID is "));
     PC_SERIAL.println(dxl.readControlTableItem(ID, DXL_ID)); // Read the values
     #ifdef Dynamixel_MX
     PC_SERIAL.print(F("Dynamixel speed is set to "));
-    PC_SERIAL.println(dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID)); // Read the values  
+    PC_SERIAL.println(dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID)); // Read the speed  
     #endif
     #ifdef Dynamixel_Pro
     PC_SERIAL.print(F("Dynamixel speed is set to "));
-    PC_SERIAL.println(dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID)); // Read the values 
+    PC_SERIAL.println(dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID)); // Read the speed 
     #endif
     #ifdef Dynamixel_Y
     PC_SERIAL.print(F("Dynamixel speed is set to "));
-    PC_SERIAL.println(dxl.readControlTableItem(GOAL_VELOCITY, DXL_ID)); // Read the values  
+    PC_SERIAL.println(dxl.readControlTableItem(GOAL_VELOCITY, DXL_ID)); // Read the speed  
     #endif
+
     PC_SERIAL.print(F("Dynamixel position P Gain is set to "));
-    PC_SERIAL.println(dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID)); // Read the values
+    PC_SERIAL.println(dxl.readControlTableItem(POSITION_P_GAIN, DXL_ID)); // Read the P Gain
     PC_SERIAL.print(F("Last known position was "));
     PC_SERIAL.println(Last_Pos);
     PC_SERIAL.print(F("Saved position is "));
     PC_SERIAL.println(Calculated_Stored_Pos);
     PC_SERIAL.print(F("Present position is "));
-    PC_SERIAL.println(dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the values
+    PC_SERIAL.println(dxl.readControlTableItem(PRESENT_POSITION, DXL_ID)); // Read the Present Position
     PC_SERIAL.print(F("Raw Dynamixel Position with no offset was "));
     PC_SERIAL.println(Raw_Position);
     PC_SERIAL.print(F("Dynamixel current offset is set to "));
-    PC_SERIAL.println(dxl.readControlTableItem(HOMING_OFFSET, DXL_ID)); // Read the values
+    PC_SERIAL.println(dxl.readControlTableItem(HOMING_OFFSET, DXL_ID)); // Read the Offset
     PC_SERIAL.print(F("Current saved Turn is "));
     PC_SERIAL.println(Abs_Stored_Turn);
     PC_SERIAL.print(F("Last Reported Error was "));
     PC_SERIAL.println((dxl.getLastLibErrCode()));
     PC_SERIAL.print(F("Current Hardware Error is "));
-    PC_SERIAL.println(dxl.readControlTableItem(HARDWARE_ERROR_STATUS, DXL_ID)); // Read the values
+    PC_SERIAL.println(dxl.readControlTableItem(HARDWARE_ERROR_STATUS, DXL_ID)); // Read the Hardware Errors
     PC_SERIAL.println(F("Current controller firmware is version 2.7 - Built Feb 3rd 2025"));
     #ifdef Dynamixel_MX
     PC_SERIAL.print(F("Current firmware is for Dynamixel MX"));  
@@ -174,10 +175,25 @@ void Serial_Parse(int Bytes)
     PC_SERIAL.print(F("Current firmware is for Dynamixel Y"));  
     #endif
   }
+
+  // If the arduino receives the specific command $MOTOR?# then respond with the current motor type:
+  else if (PC_Rx_Sentence[0] == '$' && PC_Rx_Sentence[Bytes - 1] == '#' && PC_Rx_Sentence[1] == 'M' && PC_Rx_Sentence[2] == 'O' && PC_Rx_Sentence[3] == 'T' && PC_Rx_Sentence[4] == 'O' && PC_Rx_Sentence[5] == 'R' && PC_Rx_Sentence[6] == '?')
+  {
+    #ifdef Dynamixel_MX
+    PC_SERIAL.print(F("Dynamixel MX"));  
+    #endif
+    #ifdef Dynamixel_Pro
+    PC_SERIAL.print(F("Dynamixel Pro"));  
+    #endif
+    #ifdef Dynamixel_Y
+    PC_SERIAL.print(F("Dynamixel Y"));  
+    #endif   
+  } 
+
   
+  // If the arduino receives the specific command $123400# then just respond to the PC:
   else if (PC_Rx_Sentence[0] == '$' && PC_Rx_Sentence[Bytes - 1] == '#' && PC_Rx_Sentence[1] == '1' && PC_Rx_Sentence[2] == '2' && PC_Rx_Sentence[3] == '3' && PC_Rx_Sentence[4] == '4')
   {
-    // If the arduino receives the specific command $123400# then just respond to the PC:
     Serial_Respond(); // Respond to PC   
   } 
   

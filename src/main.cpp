@@ -121,7 +121,7 @@ void setup() {
   #endif
 
   #ifdef Dynamixel_Pro
-   while (dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID) != 2600)
+  while (dxl.readControlTableItem(VELOCITY_LIMIT, DXL_ID) != 2600)
   {
     dxl.writeControlTableItem(VELOCITY_LIMIT, DXL_ID, 2600);
     PC_SERIAL.println(F("Speed setting changed"));
@@ -129,7 +129,7 @@ void setup() {
   #endif
 
   #ifdef Dynamixel_Y
-   while (dxl.readControlTableItem(GOAL_VELOCITY, DXL_ID) != 200000)
+  while (dxl.readControlTableItem(GOAL_VELOCITY, DXL_ID) != 200000)
   {
     dxl.writeControlTableItem(GOAL_VELOCITY, DXL_ID, 200000);
     PC_SERIAL.println(F("Speed setting changed"));
